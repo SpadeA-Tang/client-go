@@ -96,6 +96,7 @@ const (
 
 	CmdCop CmdType = 512 + iota
 	CmdCopStream
+	CmdCopBucket
 	CmdBatchCop
 	CmdMPPTask
 	CmdMPPConn
@@ -169,6 +170,8 @@ func (t CmdType) String() string {
 		return "Cop"
 	case CmdCopStream:
 		return "CopStream"
+	case CmdCopBucket:
+		return "CopBucket"
 	case CmdBatchCop:
 		return "BatchCop"
 	case CmdMPPTask:
@@ -631,6 +634,13 @@ type CopStreamResponse struct {
 	Lease                 // Shared by this object and a background goroutine.
 }
 
+type CopBucketResponse struct {
+	tikvpb.Tikv_CoprocessorBucketClient
+	*coprocessor.Response // The first result of Recv()
+	Timeout               time.Duration
+	Lease                 // Shared by this object and a background goroutine.
+}
+
 // BatchCopStreamResponse comprises the BatchCoprocessorClient , the first result and timeout detector.
 type BatchCopStreamResponse struct {
 	tikvpb.Tikv_BatchCoprocessorClient
@@ -716,6 +726,8 @@ func SetContext(req *Request, region *metapb.Region, peer *metapb.Peer) error {
 	case CmdCop:
 		req.Cop().Context = ctx
 	case CmdCopStream:
+		req.Cop().Context = ctx
+	case CmdCopBucket:
 		req.Cop().Context = ctx
 	case CmdBatchCop:
 		req.BatchCop().Context = ctx
@@ -849,6 +861,12 @@ func GenRegionErrorResp(req *Request, e *errorpb.Error) (*Response, error) {
 		}
 	case CmdCopStream:
 		p = &CopStreamResponse{
+			Response: &coprocessor.Response{
+				RegionError: e,
+			},
+		}
+	case CmdCopBucket:
+		p = &CopBucketResponse{
 			Response: &coprocessor.Response{
 				RegionError: e,
 			},
@@ -987,6 +1005,12 @@ func CallRPC(ctx context.Context, client tikvpb.TikvClient, req *Request) (*Resp
 		streamClient, err = client.CoprocessorStream(ctx, req.Cop())
 		resp.Resp = &CopStreamResponse{
 			Tikv_CoprocessorStreamClient: streamClient,
+		}
+	case CmdCopBucket:
+		var bucketClient tikvpb.Tikv_CoprocessorBucketClient
+		bucketClient, err = client.CoprocessorBucket(ctx, req.Cop())
+		resp.Resp = &CopBucketResponse{
+			Tikv_CoprocessorBucketClient: bucketClient,
 		}
 	case CmdBatchCop:
 		var streamClient tikvpb.Tikv_BatchCoprocessorClient

@@ -37,7 +37,10 @@ package tikv_test
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/kvproto/pkg/coprocessor"
+	"github.com/tikv/client-go/v2/tikvrpc"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 	"github.com/tikv/client-go/v2/kv"
@@ -98,6 +101,37 @@ func (s *testScanSuite) makeKey(i int) []byte {
 
 func (s *testScanSuite) makeValue(i int) []byte {
 	return []byte(fmt.Sprintf("%d", i))
+}
+
+func (s *testScanSuite) TestOwn() {
+	txn := s.beginTxn()
+	for i := 0; i < 20; i++ {
+		err := txn.Set(s.makeKey(i), s.makeValue(i))
+		s.Nil(err)
+	}
+	err := txn.Commit(context.Background())
+	s.Nil(err)
+
+	//copClient := &CopClient{}
+
+	copStreamReq := tikvrpc.NewRequest(tikvrpc.CmdCopBucket, &coprocessor.Request{})
+	//sender := locate.NewRegionRequestSender(s.store.GetRegionCache(), )
+	addr := fmt.Sprintf("%s:%d", "127.0.0.1", 20160)
+	resp, _ := s.store.GetTiKVClient().SendRequest(context.Background(), addr, copStreamReq, 30*time.Second)
+
+	fmt.Printf("%v\n", resp)
+
+	txn2 := s.beginTxn()
+	val, _ := txn2.Get(context.TODO(), s.makeKey(0))
+	fmt.Printf("Key %v value %v\n", s.makeKey(0), val)
+
+	// txn2 := s.beginTxn()
+	// scan, _ := txn2.Iter(s.recordPrefix, s.makeKey(5))
+
+	// for scan.Valid() {
+	// 	fmt.Printf("Key %v value %v\n", scan.Key(), scan.Value())
+	// 	scan.Next()
+	// }
 }
 
 func (s *testScanSuite) TestScan() {

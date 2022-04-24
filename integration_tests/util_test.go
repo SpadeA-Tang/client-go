@@ -64,6 +64,8 @@ func NewTestStore(t *testing.T) *tikv.KVStore {
 		flag.Parse()
 	}
 
+	*withTiKV = true
+
 	if *withTiKV {
 		addrs := strings.Split(*pdAddrs, ",")
 		pdClient, err := pd.NewClient(addrs, pd.SecurityOption{})
