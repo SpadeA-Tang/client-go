@@ -430,6 +430,8 @@ func (c *RPCClient) SendRequest(ctx context.Context, addr string, req *tikvrpc.R
 		return c.getBatchCopStreamResponse(ctx, client, req, timeout, connArray)
 	case tikvrpc.CmdCopStream:
 		return c.getCopStreamResponse(ctx, client, req, timeout, connArray)
+	case tikvrpc.CmdCopBucket:
+		return c.getCopBucketResponse(ctx, client, req, timeout, connArray)
 	case tikvrpc.CmdMPPConn:
 		return c.getMPPStreamResponse(ctx, client, req, timeout, connArray)
 	}
@@ -437,6 +439,11 @@ func (c *RPCClient) SendRequest(ctx context.Context, addr string, req *tikvrpc.R
 	ctx1, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	return tikvrpc.CallRPC(ctx1, client, req)
+}
+
+func (c *RPCClient) getCopBucketResponse(ctx context.Context, client tikvpb.TikvClient, req *tikvrpc.Request, timeout time.Duration, connArray *connArray) (*tikvrpc.Response, error) {
+	// todo: Implement it
+	panic("Implement it")
 }
 
 func (c *RPCClient) getCopStreamResponse(ctx context.Context, client tikvpb.TikvClient, req *tikvrpc.Request, timeout time.Duration, connArray *connArray) (*tikvrpc.Response, error) {

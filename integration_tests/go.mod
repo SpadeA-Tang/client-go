@@ -17,3 +17,7 @@ require (
 )
 
 replace github.com/tikv/client-go/v2 => ../
+
+replace github.com/pingcap/kvproto => github.com/SpadeA-Tang/kvproto v0.0.0-20220424111612-2235241f3ad6
+
+replace github.com/pingcap/tidb => github.com/SpadeA-Tang/tidb v1.1.0-beta.0.20220424112422-9408889ec2fd
