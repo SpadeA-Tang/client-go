@@ -37,7 +37,11 @@ package tikv_test
 import (
 	"context"
 	"fmt"
+	"github.com/pingcap/kvproto/pkg/coprocessor"
+	"github.com/pingcap/kvproto/pkg/kvrpcpb"
+	"github.com/tikv/client-go/v2/tikvrpc"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/suite"
 	"github.com/tikv/client-go/v2/kv"
@@ -98,6 +102,59 @@ func (s *testScanSuite) makeKey(i int) []byte {
 
 func (s *testScanSuite) makeValue(i int) []byte {
 	return []byte(fmt.Sprintf("%d", i))
+}
+
+const (
+	ReqTypeSelect   = 101
+	ReqTypeIndex    = 102
+	ReqTypeDAG      = 103
+	ReqTypeAnalyze  = 104
+	ReqTypeChecksum = 105
+
+	ReqSubTypeBasic      = 0
+	ReqSubTypeDesc       = 10000
+	ReqSubTypeGroupBy    = 10001
+	ReqSubTypeTopN       = 10002
+	ReqSubTypeSignature  = 10003
+	ReqSubTypeAnalyzeIdx = 10004
+	ReqSubTypeAnalyzeCol = 10005
+)
+
+func (s *testScanSuite) TestOwn() {
+	txn := s.beginTxn()
+	for i := 0; i < 100; i++ {
+		err := txn.Set(s.makeKey(i), s.makeValue(i))
+		s.Nil(err)
+	}
+	err := txn.Commit(context.Background())
+	s.Nil(err)
+
+	//request, _ := (&distsql.RequestBuilder{}).SetKeyRanges(nil).
+	//	SetDAGRequest(&tipb.DAGRequest{}).
+	//	SetDesc(false).
+	//	SetKeepOrder(false).
+	//	SetFromSessionVars(variable.NewSessionVars()).
+	//	SetMemTracker(memory.NewTracker(-1, -1)).
+	//	Build()
+
+	keyRange := &coprocessor.KeyRange{Start: s.makeKey(0), End: s.makeKey(5)}
+	ctx := &kvrpcpb.Context{}
+	//regionCache := s.store.GetRegionCache()
+	region, _ := s.store.GetPDClient().GetRegion(context.Background(), s.makeKey(0))
+	fmt.Println(region)
+	ctx.RegionId = region.Meta.Id
+	ctx.RegionEpoch = region.Meta.RegionEpoch
+	ctx.Peer = region.Leader
+	copStreamReq := tikvrpc.NewRequest(tikvrpc.CmdCopBucket, &coprocessor.Request{
+		Context: ctx,
+		Tp:      ReqTypeDAG,
+		Ranges:  []*coprocessor.KeyRange{keyRange},
+	})
+	client := s.store.GetTiKVClient()
+	addr := fmt.Sprintf("%s:%d", "127.0.0.1", 20160)
+	resp, err := client.SendRequest(context.Background(), addr, copStreamReq, 10*time.Second)
+	fmt.Println(err)
+	fmt.Println(resp)
 }
 
 func (s *testScanSuite) TestScan() {

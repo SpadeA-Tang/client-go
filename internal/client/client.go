@@ -443,7 +443,24 @@ func (c *RPCClient) SendRequest(ctx context.Context, addr string, req *tikvrpc.R
 
 func (c *RPCClient) getCopBucketResponse(ctx context.Context, client tikvpb.TikvClient, req *tikvrpc.Request, timeout time.Duration, connArray *connArray) (*tikvrpc.Response, error) {
 	// todo: Implement it
-	panic("Implement it")
+	ctx1, cancle := context.WithCancel(ctx)
+	resp, err := tikvrpc.CallRPC(ctx1, client, req)
+
+	copBucket := resp.Resp.(*tikvrpc.CopBucketResponse)
+	copBucket.Timeout = timeout
+	copBucket.Lease.Cancel = cancle
+	connArray.streamTimeout <- &copBucket.Lease
+
+	var first *coprocessor.Response
+	first, err = copBucket.Recv()
+	if err != nil {
+		if errors.Cause(err) != io.EOF {
+			return nil, errors.WithStack(err)
+		}
+		logutil.BgLogger().Debug("copstream returns nothing for the request.")
+	}
+	copBucket.Response = first
+	return resp, nil
 }
 
 func (c *RPCClient) getCopStreamResponse(ctx context.Context, client tikvpb.TikvClient, req *tikvrpc.Request, timeout time.Duration, connArray *connArray) (*tikvrpc.Response, error) {

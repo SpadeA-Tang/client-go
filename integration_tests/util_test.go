@@ -65,6 +65,8 @@ func NewTestStore(t *testing.T) *tikv.KVStore {
 		flag.Parse()
 	}
 
+	*withTiKV = true
+
 	if *withTiKV {
 		return newTiKVStore(t)
 	}
