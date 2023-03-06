@@ -39,6 +39,7 @@ import (
 	"net/url"
 	"strings"
 	"sync/atomic"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/tikv/client-go/v2/internal/logutil"
@@ -71,30 +72,32 @@ type Config struct {
 	PessimisticTxn       PessimisticTxn
 	TxnLocalLatches      TxnLocalLatches
 	// StoresRefreshInterval indicates the interval of refreshing stores info, the unit is second.
-	StoresRefreshInterval uint64
-	OpenTracingEnable     bool
-	Path                  string
-	EnableForwarding      bool
-	TxnScope              string
-	EnableAsyncCommit     bool
-	Enable1PC             bool
+	StoresRefreshInterval     uint64
+	OpenTracingEnable         bool
+	Path                      string
+	EnableForwarding          bool
+	TxnScope                  string
+	EnableAsyncCommit         bool
+	Enable1PC                 bool
+	CoprocessorRequestTimeout time.Duration
 }
 
 // DefaultConfig returns the default configuration.
 func DefaultConfig() Config {
 	return Config{
-		CommitterConcurrency:  128,
-		MaxTxnTTL:             60 * 60 * 1000, // 1hour
-		TiKVClient:            DefaultTiKVClient(),
-		PDClient:              DefaultPDClient(),
-		TxnLocalLatches:       DefaultTxnLocalLatches(),
-		StoresRefreshInterval: DefStoresRefreshInterval,
-		OpenTracingEnable:     false,
-		Path:                  "",
-		EnableForwarding:      false,
-		TxnScope:              "",
-		EnableAsyncCommit:     false,
-		Enable1PC:             false,
+		CommitterConcurrency:      128,
+		MaxTxnTTL:                 60 * 60 * 1000, // 1hour
+		TiKVClient:                DefaultTiKVClient(),
+		PDClient:                  DefaultPDClient(),
+		TxnLocalLatches:           DefaultTxnLocalLatches(),
+		StoresRefreshInterval:     DefStoresRefreshInterval,
+		OpenTracingEnable:         false,
+		Path:                      "",
+		EnableForwarding:          false,
+		TxnScope:                  "",
+		EnableAsyncCommit:         false,
+		Enable1PC:                 false,
+		CoprocessorRequestTimeout: 5 * time.Minute,
 	}
 }
 
