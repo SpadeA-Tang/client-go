@@ -1457,6 +1457,15 @@ func (s *RegionRequestSender) SendReqCtx(
 			s.replicaSelector.patchRequestSource(req, rpcCtx)
 		}
 
+		if req.Type == tikvrpc.CmdCop || req.Type == tikvrpc.CmdBatchCop {
+			logutil.BgLogger().Info("Coprocessor Request",
+				zap.Uint64("txnStartTS", req.GetStartTS()),
+				zap.Uint64("region_id", req.RegionId),
+				zap.Uint64("task_id", req.TaskId),
+				zap.String("region_epoch", req.RegionEpoch.String()),
+				zap.Uint64("send_to_store", rpcCtx.Store.storeID))
+			zap.String("send_to_peer", req.Peer.String())
+		}
 		var retry bool
 		resp, retry, err = s.sendReqToRegion(bo, rpcCtx, req, timeout)
 		req.IsRetryRequest = true
