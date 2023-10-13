@@ -262,8 +262,9 @@ type replicaSelector struct {
 // selectorState is the interface of states of the replicaSelector.
 // Here is the main state transition diagram:
 //
-//                                    exceeding maxReplicaAttempt
-//           +-------------------+   || RPC failure && unreachable && no forwarding
+//	                         exceeding maxReplicaAttempt
+//	+-------------------+   || RPC failure && unreachable && no forwarding
+//
 // +-------->+ accessKnownLeader +----------------+
 // |         +------+------------+                |
 // |                |                             |
@@ -280,7 +281,8 @@ type replicaSelector struct {
 // | leader becomes   v                           +---+---+
 // | reachable  +-----+-----+ all proxies are tried   ^
 // +------------+tryNewProxy+-------------------------+
-//              +-----------+
+//
+//	+-----------+
 type selectorState interface {
 	next(*retry.Backoffer, *replicaSelector) (*RPCContext, error)
 	onSendSuccess(*replicaSelector)
@@ -978,6 +980,17 @@ func (s *RegionRequestSender) SendReqCtx(
 
 		logutil.Eventf(bo.GetCtx(), "send %s request to region %d at %s", req.Type, regionID.id, rpcCtx.Addr)
 		s.storeAddr = rpcCtx.Addr
+
+		if req.Type == tikvrpc.CmdCop || req.Type == tikvrpc.CmdBatchCop {
+			logutil.BgLogger().Info("Coprocessor Request",
+				zap.Uint64("txnStartTS", req.GetStartTS()),
+				zap.Uint64("region_id", req.RegionId),
+				zap.Uint64("task_id", req.TaskId),
+				zap.String("region_epoch", req.RegionEpoch.String()),
+				zap.Uint64("send_to_store", rpcCtx.Store.storeID))
+			zap.String("send_to_peer", req.Peer.String())
+		}
+
 		var retry bool
 		resp, retry, err = s.sendReqToRegion(bo, rpcCtx, req, timeout)
 		if err != nil {
